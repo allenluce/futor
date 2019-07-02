@@ -78,12 +78,15 @@ const fixtureData = {
 }
 
 describe('Commands', function () {
-  before(function (done) {
-    this.sandbox = sinon.sandbox.create()
-    this.sandbox.stub(commands, 'setAccessToken', function () {})
+  before(function () {
+    sinon.stub(commands, 'setAccessToken')
+    sinon.stub(process, 'exit')
     // A mock of the FB object, it returns a filtered set of fixed fields.
-    this.sandbox.stub(FB, 'api', function (callName, opts, cb) {
+    sinon.stub(FB.api, 'apply').callsFake(function (args) {
       const output = {}
+      const callName = args[0]
+      const opts = args[1]
+      const cb = args[2]
       for (let fieldSet of opts.fields) {
         for (let field of fieldSet.split(',')) {
           if (typeof fixtureData[callName][field] !== 'undefined') {
@@ -93,65 +96,60 @@ describe('Commands', function () {
       }
       cb(output)
     })
-    done()
   })
 
-  after(function (done) {
-    this.sandbox.restore()
-    done()
+  after(function () {
+    sinon.restore()
   })
 
   // Intercept stdout for each test.
-  beforeEach(function (done) {
+  beforeEach(function () {
     this.output = ''
     this.unhook_intercept = intercept((txt) => {
       this.output += txt
+      if (txt.includes("\u001b")) { // Allows reporting ANSI output
+        return `${txt}`
+      }
       return '' // suppress output
     })
-    done()
   })
 
-  afterEach(function (done) {
+  afterEach(function () {
     this.unhook_intercept()
-    done()
   })
 
   describe('me', function () {
     describe('with limited fields', function () {
-      it('returns YAML by default', function (done) {
+      it('returns YAML by default', function () {
         commands.me({
           _: [ 'me' ],
           fields: [ 'name,id' ]
         })
         expect(this.output).to.equal("name: Allen Luce\nid: '10209681603216006'\n\n")
-        done()
       })
-      it('returns JSON when requested', function (done) {
+      it('returns JSON when requested', function () {
         commands.me({
           _: [ 'me' ],
           fields: [ 'name,id' ],
-          json: true
+          jsonoutput: true
         })
         expect(this.output).to.equal('{"name":"Allen Luce","id":"10209681603216006"}\n')
-        done()
       })
     })
 
     describe('with no fields specified', function () {
-      it('returns YAML by default', function (done) {
+      it('returns YAML by default', function () {
         commands.me({
           _: [ 'me' ]
         })
         expect(this.output).to.equal(YAML.safeDump(fixtureData.me) + '\n')
-        done()
       })
-      it('returns JSON when requested', function (done) {
+      it('returns JSON when requested', function () {
         commands.me({
           _: [ 'me' ],
-          json: true
+          jsonoutput: true
         })
         expect(this.output).to.equal(JSON.stringify(fixtureData.me) + '\n')
-        done()
       })
     })
   })

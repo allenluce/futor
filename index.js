@@ -24,9 +24,10 @@ fields.impressions = fields.getpost
 
 const outData = function (argv, data) {
   if (!argv.jsonoutput) {
-    data = YAML.safeDump(data)
+    console.log(YAML.safeDump(data))
+  } else {
+    console.log(JSON.stringify(data))
   }
-  console.log(data)
 }
 
 const callFB = function () {
@@ -49,7 +50,7 @@ const callFB = function () {
     }
     process.exit(0)
   })
-  FB.api.call(args)
+  FB.api.apply(args)
 }
 
 class FF {
